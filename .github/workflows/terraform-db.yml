@@ -1,0 +1,84 @@
+name: 'Terraform Deploy to Azure DB'
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  # ATENÇÃO AQUI:
+  # Este é o caminho para o seu código, baseado na sua imagem
+  TF_WORKING_DIR: 'terraform/azure-aks' 
+  
+  # === Configuração do OIDC ===
+  # Você deve criar estes segredos NESTE NOVO REPOSITÓRIO
+  ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+  ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+  ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+  ARM_USE_OIDC: true
+
+jobs:
+  terraform:
+    name: 'Terraform DB'
+    runs-on: ubuntu-latest
+    environment: production 
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      # Usa o backend.tf para conectar no storage account
+      - name: Terraform Init
+        id: init
+        run: terraform init
+        working-directory: ${{ env.TF_WORKING_DIR }}
+
+      - name: Terraform Validate
+        id: validate
+        run: terraform validate
+        working-directory: ${{ env.TF_WORKING_DIR }}
+
+      # O 'plan' vai falhar se o Resource Group (do outro repo) não existir
+      - name: Terraform Plan
+        id: plan
+        run: terraform plan -no-color -out=tfplan
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        continue-on-error: ${{ github.event_name == 'pull_request' }}
+
+      # (Opcional) Comenta o 'plan' no PR
+      - name: Update PR with Plan
+        uses: actions/github-script@v6
+        if: github.event_name == 'pull_request' && steps.plan.outcome != 'failure'
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const output = `#### Terraform Plan (Banco de Dados) 📖
+            <details><summary>Mostrar Plano (${{ steps.plan.outcome }})</summary>
+            \`\`\`\n
+            ${{ steps.plan.outputs.stdout }}
+            \n\`\`\`
+            </details>`;
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: output
+            });
+
+      # Aplica o banco de dados (APENAS em push para a 'main')
+      - name: Terraform Apply
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push' && steps.plan.outcome == 'success'
+        run: terraform apply -auto-approve "tfplan"
+        working-directory: ${{ env.TF_WORKING_DIR }}    
