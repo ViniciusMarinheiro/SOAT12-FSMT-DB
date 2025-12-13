@@ -1,0 +1,50 @@
+name: "Terraform Database (PostgreSQL)"
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  pull_request:
+
+permissions:
+  contents: read
+
+env:
+  # Credenciais da Azure (Certifique-se de ter criado as Secrets neste repositório também)
+  ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+  ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+  ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+  ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+  
+  # Importante: Desativa o login via OIDC para usar as Secrets acima sem erro
+  ARM_USE_OIDC: false
+
+jobs:
+  terraform:
+    name: 'Terraform DB'
+    runs-on: ubuntu-latest
+    
+    defaults:
+      run:
+        shell: bash
+        # O caminho para a pasta do Terraform do Banco.
+        # Ajuste se sua pasta tiver nome diferente de "azure-postgre"
+        working-directory: ./terraform/azure-postgre
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v2
+      with:
+        terraform_wrapper: false
+
+    - name: Terraform Init
+      run: terraform init
+
+    - name: Terraform Plan
+      run: terraform plan -input=false
+
+    - name: Terraform Apply
+      if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+      run: terraform apply -auto-approve -input=false
