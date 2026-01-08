@@ -1,0 +1,52 @@
+name: Deploy Database Azure
+
+on:
+  push:
+    branches:
+      - master  # Branch corrigida para master
+    paths:
+      - 'terraform/psql-azure/**' # Gatilho apenas se houver mudanças nesta pasta
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  terraform:
+    name: Terraform Apply
+    runs-on: ubuntu-latest
+    
+    # Define o diretório padrão para todos os passos 'run' deste job
+    defaults:
+      run:
+        working-directory: ./terraform/psql-azure
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      # Login no Azure (Ajuste conforme sua autenticação: Service Principal ou OIDC)
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform Init
+        run: terraform init
+
+      - name: Terraform Format
+        run: terraform fmt -check
+
+      - name: Terraform Validate
+        run: terraform validate
+
+      - name: Terraform Plan
+        run: terraform plan -out=tfplan
+
+      - name: Terraform Apply
+        if: github.ref == 'refs/heads/master' && github.event_name == 'push'
+        run: terraform apply -auto-approve tfplan
