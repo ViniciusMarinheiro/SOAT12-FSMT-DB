@@ -1,7 +1,8 @@
 variable "resource_group_name" {
-  description = "Name of the existing resource group created by the AKS repo"
+  description = "Nome do Resource Group onde o banco de dados está localizado"
   type        = string
-  default     = "MyResourceGroup" 
+  # ATENÇÃO: Troque "MyResourceGroup" pelo nome do RG onde você criou o banco manualmente
+  default     = "rg-fsmt-soat12" 
 }
 
 data "azurerm_resource_group" "rg" {
