@@ -36,5 +36,5 @@ resource "azurerm_postgresql_flexible_server_database" "pg_db" {
   name      = "oficina_db" # Sugiro não usar 'meu_banco...', use um nome real
   server_id = azurerm_postgresql_flexible_server.pg_server.id
   charset   = "UTF8"
-  collation = "en_US.UTF-8"
+  collation = "en_US.utf8"
 }
