@@ -21,4 +21,3 @@ Provisionamento do **Azure Database for PostgreSQL (Flexible Server)**. Este rep
 2. **Federated Credentials**: O repositório deve ter permissão OIDC no App Registration do Azure.
 3. **Trigger**: Push na branch `main` dispara o deploy para o ambiente de produção na Azure.
 
-## 🏗 Arquitetura Específica
